@@ -19,7 +19,7 @@ fs.readFile('../README.md', 'utf8', (error, data) => {
             <link href="http://fonts.googleapis.com/css?family=Old+Standard+TT:400,400italic,700" rel="stylesheet" type="text/css">
             <link href="http://fonts.googleapis.com/css?family=Open+Sans:400,700,600" rel="stylesheet" type="text/css">
             <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.2/css/foundation.min.css">
-            <link rel="stylesheet" type="text/css" href="./style.css" />
+            <link rel="stylesheet" type="text/css" href="./docs_gen/style.css" />
 
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -29,14 +29,14 @@ fs.readFile('../README.md', 'utf8', (error, data) => {
 
             <script>hljs.highlightAll();</script>
 
-            <title>Document</title>
+            <title>GoWebX</title>
         </head>
         <body>
             ${dataConvert}
         </body>
         </html>
     `
-    fs.writeFile('../generated/readme.html', html, 'utf8', (error) => {
+    fs.writeFile('../Readme.html', html, 'utf8', (error) => {
         if (error) {
             console.error('An error occurred while writing to the file:', error);
             return;
@@ -45,5 +45,3 @@ fs.readFile('../README.md', 'utf8', (error, data) => {
     });
 
 });
-
-

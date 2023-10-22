@@ -1,0 +1,327 @@
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="http://fonts.googleapis.com/css?family=Old+Standard+TT:400,400italic,700" rel="stylesheet" type="text/css">
+            <link href="http://fonts.googleapis.com/css?family=Open+Sans:400,700,600" rel="stylesheet" type="text/css">
+            <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.2/css/foundation.min.css">
+            <link rel="stylesheet" type="text/css" href="./docs_gen/style.css" />
+
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+            <!-- and it's easy to individually load additional languages -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+
+            <script>hljs.highlightAll();</script>
+
+            <title>GoWebX</title>
+        </head>
+        <body>
+            <h1 id="gowebxcoveragestatushttpscoverallsioreposgithubarrowltdnetgowebxbadgesvgbranchmasterhttpscoverallsiogithubarrowltdnetgowebxbranchmasterdocshttpsgodocorggithubcomarrowltdnetgowebxstatussvghttppkggodevgithubcomarrowltdnetgowebx">GoWebX <a href="https://coveralls.io/github/arrowltdnet/gowebx?branch=master"><img src="https://coveralls.io/repos/github/arrowltdnet/gowebx/badge.svg?branch=master" alt="Coverage Status" /></a> <a href="http://pkg.go.dev/github.com/arrowltdnet/gowebx"><img src="https://godoc.org/github.com/arrowltdnet/gowebx?status.svg" alt="Docs" /></a></h1>
+<p>GoWebX is a lightweight high performance HTTP request router (also called <em>multiplexer</em> or just <em>mux</em> for short) for <a href="https://golang.org/">Go</a>.</p>
+<p>In contrast to the <a href="https://golang.org/pkg/net/http/#ServeMux">default mux</a> of Go's <code>net/http</code> package, this router supports variables in the routing pattern and matches against the request method. It also scales better.</p>
+<p>The router is optimized for high performance and a small memory footprint. It scales well even with very long paths and a large number of routes. A compressing dynamic trie (radix tree) structure is used for efficient matching.</p>
+<h2 id="features">Features</h2>
+<p><strong>Only explicit matches:</strong> With other routers, like <a href="https://golang.org/pkg/net/http/#ServeMux"><code>http.ServeMux</code></a>, a requested URL path could match multiple patterns. Therefore they have some awkward pattern priority rules, like <em>longest match</em> or <em>first registered, first matched</em>. By design of this router, a request can only match exactly one or no route. As a result, there are also no unintended matches, which makes it great for SEO and improves the user experience.</p>
+<p><strong>Stop caring about trailing slashes:</strong> Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.RedirectTrailingSlash">turn off this behavior</a>.</p>
+<p><strong>Path auto-correction:</strong> Besides detecting the missing or additional trailing slash at no extra cost, the router can also fix wrong cases and remove superfluous path elements (like <code>../</code> or <code>//</code>). Is <a href="http://www.urbandictionary.com/define.php?term=Captain+Caps+Lock">CAPTAIN CAPS LOCK</a> one of your users? GoWebX can help him by making a case-insensitive look-up and redirecting him to the correct URL.</p>
+<p><strong>Parameters in your routing pattern:</strong> Stop parsing the requested URL path, just give the path segment a name and the router delivers the dynamic value to you. Because of the design of the router, path parameters are very cheap.</p>
+<p><strong>Zero Garbage:</strong> The matching and dispatching process generates zero bytes of garbage. The only heap allocations that are made are building the slice of the key-value pairs for path parameters, and building new context and request objects (the latter only in the standard <code>Handler</code>/<code>HandlerFunc</code> API). In the 3-argument API, if the request path contains no parameters not a single heap allocation is necessary.</p>
+<p><strong>No more server crashes:</strong> You can set a <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.PanicHandler">Panic handler</a> to deal with panics occurring during handling a HTTP request. The router then recovers and lets the <code>PanicHandler</code> log what happened and deliver a nice error page.</p>
+<p><strong>Perfect for APIs:</strong> The router design encourages to build sensible, hierarchical RESTful APIs. Moreover it has built-in native support for <a href="http://zacstewart.com/2012/04/14/http-options-method.html">OPTIONS requests</a> and <code>405 Method Not Allowed</code> replies.</p>
+<p>Of course you can also set <strong>custom <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.NotFound"><code>NotFound</code></a> and  <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.MethodNotAllowed"><code>MethodNotAllowed</code></a> handlers</strong> and <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.ServeFiles"><strong>serve static files</strong></a>.</p>
+<h2 id="usage">Usage</h2>
+<p>This is just a quick introduction, view the <a href="http://pkg.go.dev/github.com/arrowltdnet/gowebx">Docs</a> for details.</p>
+<pre><code class="bash language-bash">    $ export GOPRIVATE=github.com/arrowltdnet/gowebx
+    $ git config --global --add url."git@github.com:".insteadOf "https://github.com/"
+    $ go get github.com/arrowltdnet/gowebx
+</code></pre>
+<p>and use it, like in this trivial example:</p>
+<pre><code class="go language-go">package main
+
+import (
+    "fmt"
+    "net/http"
+    "log"
+
+    "github.com/arrowltdnet/gowebx"
+)
+
+func Index(w http.ResponseWriter, r *http.Request, _ gowebx.Params) {
+    fmt.Fprint(w, "Welcome!\n")
+}
+
+func Hello(w http.ResponseWriter, r *http.Request, ps gowebx.Params) {
+    fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+}
+
+func main() {
+    router := gowebx.New()
+    router.GET("/", Index)
+    router.GET("/hello/:name", Hello)
+
+    log.Fatal(http.ListenAndServe(":8080", router))
+}
+</code></pre>
+<h3 id="namedparameters">Named parameters</h3>
+<p>As you can see, <code>:name</code> is a <em>named parameter</em>. The values are accessible via <code>gowebx.Params</code>, which is just a slice of <code>gowebx.Param</code>s. You can get the value of a parameter either by its index in the slice, or by using the <code>ByName(name)</code> method: <code>:name</code> can be retrieved by <code>ByName("name")</code>.</p>
+<p>When using a <code>http.Handler</code> (using <code>router.Handler</code> or <code>http.HandlerFunc</code>) instead of GoWebX's handle API using a 3rd function parameter, the named parameters are stored in the <code>request.Context</code>. See more below under <a href="#why-doesnt-this-work-with-httphandler">Why doesn't this work with http.Handler?</a>.</p>
+<p>Named parameters only match a single path segment:</p>
+<pre><code class="bash language-bash">Pattern: /user/:user
+
+ /user/gordon              match
+ /user/you                 match
+ /user/gordon/profile      no match
+ /user/                    no match
+</code></pre>
+<p><strong>Note:</strong> Since this router has only explicit matches, you can not register static routes and parameters for the same path segment. For example you can not register the patterns <code>/user/new</code> and <code>/user/:user</code> for the same request method at the same time. The routing of different request methods is independent from each other.</p>
+<h3 id="catchallparameters">Catch-All parameters</h3>
+<p>The second type are <em>catch-all</em> parameters and have the form <code>*name</code>. Like the name suggests, they match everything. Therefore they must always be at the <strong>end</strong> of the pattern:</p>
+<pre><code class="bash language-bash">Pattern: /src/*filepath
+
+ /src/                     match
+ /src/somefile.go          match
+ /src/subdir/somefile.go   match
+</code></pre>
+<h2 id="howdoesitwork">How does it work?</h2>
+<p>The router relies on a tree structure which makes heavy use of <em>common prefixes</em>, it is basically a <em>compact</em> <a href="https://en.wikipedia.org/wiki/Trie"><em>prefix tree</em></a> (or just <a href="https://en.wikipedia.org/wiki/Radix_tree"><em>Radix tree</em></a>). Nodes with a common prefix also share a common parent. Here is a short example what the routing tree for the <code>GET</code> request method could look like:</p>
+<pre><code class="bash language-bash">Priority   Path             Handle
+9          \                *&lt;1&gt;
+3          ├s               nil
+2          |├earch\         *&lt;2&gt;
+1          |└upport\        *&lt;3&gt;
+2          ├blog\           *&lt;4&gt;
+1          |    └:post      nil
+1          |         └\     *&lt;5&gt;
+2          ├about-us\       *&lt;6&gt;
+1          |        └team\  *&lt;7&gt;
+1          └contact\        *&lt;8&gt;
+</code></pre>
+<p>Every <code>*&lt;num&gt;</code> represents the memory address of a handler function (a pointer). If you follow a path trough the tree from the root to the leaf, you get the complete route path, e.g <code>\blog\:post\</code>, where <code>:post</code> is just a placeholder (<a href="#named-parameters"><em>parameter</em></a>) for an actual post name. Unlike hash-maps, a tree structure also allows us to use dynamic parts like the <code>:post</code> parameter, since we actually match against the routing patterns instead of just comparing hashes.</p>
+<p>Since URL paths have a hierarchical structure and make use only of a limited set of characters (byte values), it is very likely that there are a lot of common prefixes. This allows us to easily reduce the routing into ever smaller problems. Moreover the router manages a separate tree for every request method. For one thing it is more space efficient than holding a method-&gt;handle map in every single node, it also allows us to greatly reduce the routing problem before even starting the look-up in the prefix-tree.</p>
+<p>For even better scalability, the child nodes on each tree level are ordered by priority, where the priority is just the number of handles registered in sub nodes (children, grandchildren, and so on..). This helps in two ways:</p>
+<ol>
+<li>Nodes which are part of the most routing paths are evaluated first. This helps to make as much routes as possible to be reachable as fast as possible.</li>
+<li>It is some sort of cost compensation. The longest reachable path (highest cost) can always be evaluated first. The following scheme visualizes the tree structure. Nodes are evaluated from top to bottom and from left to right.</li>
+</ol>
+<pre><code class="lua language-lua">├------------
+├---------
+├-----
+├----
+├--
+├--
+└-
+</code></pre>
+<h2 id="whydoesntthisworkwithhttphandler">Why doesn't this work with <code>http.Handler</code>?</h2>
+<p><strong>It does!</strong> The router itself implements the <code>http.Handler</code> interface. Moreover the router provides convenient <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.Handler">adapters for <code>http.Handler</code></a>s and <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.HandlerFunc"><code>http.HandlerFunc</code></a>s which allows them to be used as a <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.Handle"><code>gowebx.Handle</code></a> when registering a route.</p>
+<p>Named parameters can be accessed <code>request.Context</code>:</p>
+<pre><code class="go language-go">func Hello(w http.ResponseWriter, r *http.Request) {
+    params := gowebx.ParamsFromContext(r.Context())
+
+    fmt.Fprintf(w, "hello, %s!\n", params.ByName("name"))
+}
+</code></pre>
+<p>Alternatively, one can also use <code>params := r.Context().Value(gowebx.ParamsKey)</code> instead of the helper function.</p>
+<p>Just try it out for yourself, the usage of GoWebX is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.</p>
+<h2 id="automaticoptionsresponsesandcors">Automatic OPTIONS responses and CORS</h2>
+<p>One might wish to modify automatic responses to OPTIONS requests, e.g. to support <a href="https://developer.mozilla.org/en-US/docs/Glossary/preflight_request">CORS preflight requests</a> or to set other headers.
+This can be achieved using the <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.GlobalOPTIONS"><code>Router.GlobalOPTIONS</code></a> handler:</p>
+<pre><code class="go language-go">router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    if r.Header.Get("Access-Control-Request-Method") != "" {
+        // Set CORS headers
+        header := w.Header()
+        header.Set("Access-Control-Allow-Methods", header.Get("Allow"))
+        header.Set("Access-Control-Allow-Origin", "*")
+    }
+
+    // Adjust status code to 204
+    w.WriteHeader(http.StatusNoContent)
+})
+</code></pre>
+<h2 id="wherecanifindmiddlewarex">Where can I find Middleware <em>X</em>?</h2>
+<p>This package just provides a very efficient request router with a few extra features. The router is just a <a href="https://golang.org/pkg/net/http/#Handler"><code>http.Handler</code></a>, you can chain any http.Handler compatible middleware before the router, for example the <a href="http://www.gorillatoolkit.org/pkg/handlers">Gorilla handlers</a>. Or you could <a href="https://justinas.org/writing-http-middleware-in-go/">just write your own</a>, it's very easy!</p>
+<p>Alternatively, you could try <a href="#web-frameworks-based-on-gowebx">a web framework based on GoWebX</a>.</p>
+<h3 id="multidomainsubdomains">Multi-domain / Sub-domains</h3>
+<p>Here is a quick example: Does your server serve multiple domains / hosts?
+You want to use sub-domains?
+Define a router per host!</p>
+<pre><code class="go language-go">// We need an object that implements the http.Handler interface.
+// Therefore we need a type for which we implement the ServeHTTP method.
+// We just use a map here, in which we map host names (with port) to http.Handlers
+type HostSwitch map[string]http.Handler
+
+// Implement the ServeHTTP method on our new type
+func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    // Check if a http.Handler is registered for the given host.
+    // If yes, use it to handle the request.
+    if handler := hs[r.Host]; handler != nil {
+        handler.ServeHTTP(w, r)
+    } else {
+        // Handle host names for which no handler is registered
+        http.Error(w, "Forbidden", 403) // Or Redirect?
+    }
+}
+
+func main() {
+    // Initialize a router as usual
+    router := gowebx.New()
+    router.GET("/", Index)
+    router.GET("/hello/:name", Hello)
+
+    // Make a new HostSwitch and insert the router (our http handler)
+    // for example.com and port 12345
+    hs := make(HostSwitch)
+    hs["example.com:12345"] = router
+
+    // Use the HostSwitch to listen and serve on port 12345
+    log.Fatal(http.ListenAndServe(":12345", hs))
+}
+</code></pre>
+<h3 id="basicauthentication">Basic Authentication</h3>
+<p>Another quick example: Basic Authentication (RFC 2617) for handles:</p>
+<pre><code class="go language-go">package main
+
+import (
+    "fmt"
+    "log"
+    "net/http"
+
+    "github.com/arrowltdnet/gowebx"
+)
+
+func BasicAuth(h gowebx.Handle, requiredUser, requiredPassword string) gowebx.Handle {
+    return func(w http.ResponseWriter, r *http.Request, ps gowebx.Params) {
+        // Get the Basic Authentication credentials
+        user, password, hasAuth := r.BasicAuth()
+
+        if hasAuth &amp;&amp; user == requiredUser &amp;&amp; password == requiredPassword {
+            // Delegate request to the given handle
+            h(w, r, ps)
+        } else {
+            // Request Basic Authentication otherwise
+            w.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
+            http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+        }
+    }
+}
+
+func Index(w http.ResponseWriter, r *http.Request, _ gowebx.Params) {
+    fmt.Fprint(w, "Not protected!\n")
+}
+
+func Protected(w http.ResponseWriter, r *http.Request, _ gowebx.Params) {
+    fmt.Fprint(w, "Protected!\n")
+}
+
+func main() {
+    user := "gordon"
+    pass := "secret!"
+
+    router := gowebx.New()
+    router.GET("/", Index)
+    router.GET("/protected/", BasicAuth(Protected, user, pass))
+
+    log.Fatal(http.ListenAndServe(":8080", router))
+}
+</code></pre>
+<h2 id="chainingwiththenotfoundhandler">Chaining with the NotFound handler</h2>
+<p><strong>NOTE: It might be required to set <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.HandleMethodNotAllowed"><code>Router.HandleMethodNotAllowed</code></a> to <code>false</code> to avoid problems.</strong></p>
+<p>You can use another <a href="https://golang.org/pkg/net/http/#Handler"><code>http.Handler</code></a>, for example another router, to handle requests which could not be matched by this router by using the <a href="https://godoc.org/github.com/arrowltdnet/gowebx#Router.NotFound"><code>Router.NotFound</code></a> handler. This allows chaining.</p>
+<h3 id="staticfiles">Static files</h3>
+<p>The <code>NotFound</code> handler can for example be used to serve static files from the root path <code>/</code> (like an <code>index.html</code> file along with other assets):</p>
+<pre><code class="go language-go">// Serve static files from the ./public directory
+router.NotFound = http.FileServer(http.Dir("public"))
+</code></pre>
+<p>But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like <code>/static/*filepath</code> or <code>/files/*filepath</code>.</p>
+<p>Static using http</p>
+<pre><code class="go language-go">package main
+
+import (
+    "flag"
+    "log"
+    "net/http"
+)
+
+func main() {
+    http.Handle("/static", http.FileServer(http.Dir("public")))
+
+    log.Fatal(http.ListenAndServe(":8080", nil))
+}
+</code></pre>
+<h2 id="json">JSON</h2>
+<p>The NewDecoder function is also used to decode JSON data from a reader, such as a file or network connection.</p>
+<pre><code class="go language-go">package main
+
+import ( 
+    "encoding/json" 
+    "fmt" 
+    "net/http"
+)
+
+type Person struct { 
+    Name string `json:"name"` 
+    Age int `json:"age"`
+}
+
+func handler(w http.ResponseWriter, r *http.Request, _ gowebx.Params) { 
+
+    decoder := json.NewDecoder(r.Body) 
+
+    var person Person err := decoder.Decode(&amp;person) 
+
+    if err != nil {  
+        http.Error(w, err.Error(), http.StatusBadRequest)  
+        return 
+       } 
+
+    fmt.Println(person.Name) 
+    // Output: John fmt.Println(person.Age) 
+    // Output: 30
+}
+
+func main() { 
+    router := gowebx.New()
+    router.GET("/", handler)
+    http.ListenAndServe(":8080", router)
+}
+</code></pre>
+<p>JSON encode</p>
+<pre><code class="go language-go">package main
+
+import ( 
+    "encoding/json"
+    "fmt"
+    "net/http"
+ )
+
+type Person struct { 
+    Name string `json:"name"` 
+    Age int `json:"age"`
+}
+
+func handler(w http.ResponseWriter, r *http.Request, _ gowebx.Params) { 
+    person := Person{  Name: "John",  Age: 30, } 
+
+    // Encoding - One step
+    jsonStr, err := json.Marshal(person) 
+
+    if err != nil {  
+        http.Error(w, err.Error(), http.StatusInternalServerError)  
+        return 
+    } 
+
+    w.Write(jsonStr)
+}
+
+func main() { 
+    router := gowebx.New()
+    router.GET("/", handler)
+    http.ListenAndServe(":8080", router)
+}
+</code></pre>
+        </body>
+        </html>
+    
